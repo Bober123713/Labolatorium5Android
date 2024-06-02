@@ -21,6 +21,7 @@ public class DrawingSurface extends SurfaceView implements SurfaceHolder.Callbac
     private List<Line> lines = new ArrayList<>();
     private Line currentLine;
     private int currentColor = 0xFFFF0000; // Default Red
+    private Bitmap bitmap; // Bitmap to hold the drawing
 
     public DrawingSurface(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -58,8 +59,13 @@ public class DrawingSurface extends SurfaceView implements SurfaceHolder.Callbac
     public Bitmap getBitmap() {
         Bitmap bitmap = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
-        draw(canvas);
+        drawCanvas(canvas);
         return bitmap;
+    }
+
+    public void setBitmap(Bitmap bitmap) {
+        this.bitmap = bitmap;
+        invalidate(); // Request a redraw of the view
     }
 
     @Override
@@ -93,37 +99,48 @@ public class DrawingSurface extends SurfaceView implements SurfaceHolder.Callbac
                 continue;
             }
             Canvas canvas = surfaceHolder.lockCanvas();
-            canvas.drawColor(0xFFFFFFFF); // White background
-            for (Line line : lines) {
-                paint.setColor(line.getColor());
-                List<Point> points = line.getPoints();
-                for (int i = 1; i < points.size(); i++) {
-                    float startX = points.get(i - 1).x;
-                    float startY = points.get(i - 1).y;
-                    float endX = points.get(i).x;
-                    float endY = points.get(i).y;
-                    canvas.drawLine(startX, startY, endX, endY, paint);
+            if (canvas != null) {
+                drawCanvas(canvas);
+                surfaceHolder.unlockCanvasAndPost(canvas);
+            }
+        }
+    }
 
-                    if (i == 1) {
-                        // Draw a larger circle at the start of the line
-                        canvas.drawCircle(startX, startY, 10, paint);
-                    }
-                    if (i == points.size() - 1) {
-                        // Draw a larger circle at the end of the line
-                        canvas.drawCircle(endX, endY, 10, paint);
-                    }
+    private void drawCanvas(Canvas canvas) {
+        canvas.drawColor(0xFFFFFFFF); // White background
+        if (bitmap != null) {
+            canvas.drawBitmap(bitmap, 0, 0, null);
+        }
+        for (Line line : lines) {
+            paint.setColor(line.getColor());
+            List<Point> points = line.getPoints();
+            for (int i = 1; i < points.size(); i++) {
+                float startX = points.get(i - 1).x;
+                float startY = points.get(i - 1).y;
+                float endX = points.get(i).x;
+                float endY = points.get(i).y;
+                canvas.drawLine(startX, startY, endX, endY, paint);
+
+                if (i == 1) {
+                    // Draw a larger circle at the start of the line
+                    canvas.drawCircle(startX, startY, 10, paint);
+                }
+                if (i == points.size() - 1) {
+                    // Draw a larger circle at the end of the line
+                    canvas.drawCircle(endX, endY, 10, paint);
                 }
             }
-            surfaceHolder.unlockCanvasAndPost(canvas);
         }
     }
 
     public void setColor(int color) {
         currentColor = color;
+        paint.setColor(currentColor);
     }
 
     public void clear() {
         lines.clear();
+        bitmap = null; // Clear the bitmap as well
     }
 
     private class Line {
